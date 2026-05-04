@@ -1,0 +1,9 @@
+*.pdf filter=lfs diff=lfs merge=lfs -text
+*.json filter=lfs diff=lfs merge=lfs -text
+*.csv filter=lfs diff=lfs merge=lfs -text
+*.xlsx filter=lfs diff=lfs merge=lfs -text
+*.docx filter=lfs diff=lfs merge=lfs -text
+*.doc filter=lfs diff=lfs merge=lfs -text
+academic_sample_1.sql filter=lfs diff=lfs merge=lfs -text
+document_files/Game[[:space:]]Manual[[:space:]]Book.pdf filter=lfs diff=lfs merge=lfs -text
+history_chat_users/24746_Schrefl_cache.json filter=lfs diff=lfs merge=lfs -text
