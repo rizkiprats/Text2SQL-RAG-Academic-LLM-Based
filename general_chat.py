@@ -48,17 +48,17 @@ def chat_general_context(text :TextRAG, last_response, last_data_json, current_q
                 return {'error': 'Internal server error'}, 500
         else:
             try:
-                urls = []
-                for result in search(current_question, num_results=5):
-                    print("result google search", result)
-                    urls.append(result)
-                print("urls : ", urls)
+                # urls = []
+                # for result in search(current_question, num_results=5):
+                #     print("result google search", result)
+                #     urls.append(result)
+                # print("urls : ", urls)
                 
                 all_contents = []
-                for url in urls:
-                    content = get_text_from_url(url)
-                    all_contents.append(content)
-                print("all_contents : ", all_contents)
+                # for url in urls:
+                #     content = get_text_from_url(url)
+                #     all_contents.append(content)
+                # print("all_contents : ", all_contents)
 
                 response = text.run_summary_context(current_question, "", all_contents)
                 print("response summary general chat not related: ", response)
@@ -73,16 +73,16 @@ def chat_general_context(text :TextRAG, last_response, last_data_json, current_q
     else:
         try:
             urls = []
-            for result in search(current_question, num_results=5):
-                print("result google search", result)
-                urls.append(result)
-            print("urls : ", urls)
+            # for result in search(current_question, num_results=5):
+            #     print("result google search", result)
+            #     urls.append(result)
+            # print("urls : ", urls)
             
             all_contents = []
-            for url in urls:
-                content = get_text_from_url(url)
-                all_contents.append(content)
-            print("all_contents : ", all_contents)
+            # for url in urls:
+            #     content = get_text_from_url(url)
+            #     all_contents.append(content)
+            # print("all_contents : ", all_contents)
             
             response = text.run_summary_context(current_question, "", all_contents)
             print("response summary general chat: ", response)
