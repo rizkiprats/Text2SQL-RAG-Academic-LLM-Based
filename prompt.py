@@ -18,63 +18,89 @@ from langchain_core.prompts import ChatPromptTemplate
 
 prompt_sql_generator = ChatPromptTemplate.from_messages([
     ("system",
-     """
-     Kamu adalah AI SQL expert. Jawablah HANYA dengan Query SQL Postgre yang valid.
-     GUNAKAN HANYA Table dan Columns dari skema berikut.
-     JANGAN membuat nama kolom atau tabel yang tidak disebutkan di skema.
-     JANGAN menambah nambahkan nama Table.
-     SELALU gunakan query ILIKE untuk persamaan string.
-     Jika dari skema dibutuhkan query join maka buatlah query join.
-     Untuk tanggal Format nya adalah YYYY\\MM\\DD HH:MM:SS.
-     Jika tidak yakin, jawab dengan Query SQL kosong.
-     """
-     ),
+    """
+    Kamu adalah AI SQL expert. Jawablah HANYA dengan Query SQL Postgre yang valid.
+
+    Instruksi:
+    1. GUNAKAN HANYA Table dan Columns dari skema berikut.
+    2. JANGAN membuat nama kolom atau tabel yang tidak disebutkan di skema.
+    3. JANGAN menambah nambahkan nama Table.
+    4. SELALU gunakan query ILIKE untuk persamaan string.
+    5. Jika dari skema dibutuhkan query join maka buatlah query join.
+    6. Untuk tanggal Format nya adalah YYYY\\MM\\DD HH:MM:SS.
+    7. Jika tidak yakin, jawab dengan Query SQL kosong.
+
+    Skema:
+    {context}
+    
+    Tanggal:
+    {date}
+    """
+    ),
     ("human",
-     """
-     Skema:{context}
-     Pertanyaan:{question}
-     Tanggal:{date}
-     Buatkan query sql untuk pertanyaan dengan Query SQL Postgres.
-     """)
+    """
+    Pertanyaan:
+    {question}
+    
+    Buatkan query sql untuk pertanyaan dengan Query SQL Postgres.
+    """)
 ])
 
 prompt_classify_question = ChatPromptTemplate.from_messages([
     ("system",
-     """
+    """
     Kamu adalah pengklasifikasi pertanyaan yang mengelompokkan pertanyaan ke dalam tiga jenis.
-    Pengguna diharapkan untuk mengajukan pertanyaan yang terkait dengan Skema database.
-    Namun, mereka juga dapat mengajukan pertanyaan umum.
-    Kami ingin mengklasifikasikan pertanyaan yang tidak terkait dengan Skema database sebagai "OUT_OF_SCOPE".
-    Format Output:{format_output}
+
+    Klasifikasi Pertanyaan:
+    1. DATA_QUESTION
+    2. DOCUMENT_QUESTION
+    3. GENERAL_QUESTION
+
+    Data pengetahuan untuk klasifikasi:
+    Skema:
+    {sql_context}
+    
+    File Dokumen:
+    {document_files_context}
+
+    Instruksi Klasifikasi: 
+    1. Pertanyaan yang terkait dengan Skema database akan dikategorikan sebagai DATA_QUESTION.
+    2. Pertanyaan yang terkait dengan File Dokumen akan dikategorikan sebagai DOCUMENT_QUESTION.
+    3. Pertanyaan yang tidak terkait dengan Skema database atau File Dokumen dianggap sebagai GENERAL_QUESTION.
+
+    Format response:
+    1. Berikan jawaban dalam bentuk JSON dengan formart {format_output}
     """),
     ("human",
-     """
-     Skema:{context}
-     Pertanyaan:{question}
-     Klasifikasikan pertanyaan tersebut.
-     """)
+    """
+    Pertanyaan:
+    {question}
+    
+    Klasifikasikan pertanyaan tersebut.
+    """)
 ])
 
 prompt_related_question_check = ChatPromptTemplate.from_messages([
     ("system",
     """
     Analisis apakah pertanyaan baru memiliki kaitan dengan data dan respon sebelumnya.
-    Pertimbangkan juga:
-        - Variasi kata yang merujuk pada konsep yang sama
 
-    Instruksi:
-        1. Periksa apakah pertanyaan baru memiliki kaitan dengan data dan respon sebelumnya
-        2. Jika ada kaitan, kembalikan hanya 'true'
-        3. Jika tidak ada kaitan, kembalikan hanya 'false'
-    """),
-    ("human",
-    """
     Respon Sebelumnya:
     {last_response}
 
     Data yang tersedia:
-    {last_data_json}    
+    {last_data_json}
     
+    Pertimbangkan juga:
+    1. Variasi kata yang merujuk pada konsep yang sama
+
+    Instruksi:
+    1. Periksa apakah pertanyaan baru memiliki kaitan dengan data dan respon sebelumnya
+    2. Jika ada kaitan, kembalikan hanya 'true'
+    3. Jika tidak ada kaitan, kembalikan hanya 'false'
+    """),
+    ("human",
+    """
     Pertanyaan Baru:
     {question}
     """)
@@ -84,6 +110,12 @@ prompt_summary_question = ChatPromptTemplate.from_messages([
     ("system",
     """
     Anda adalah asisten yang ramah dan membantu. Berikan respon yang natural dan mudah dipahami seperti sedang berbicara langsung dengan user.
+
+    Respon Sebelumnya:
+    {last_response}
+
+    Data yang tersedia:
+    {data_json}    
 
     Instruksi:
     1. Berikan jawaban yang natural dan langsung menjawab pertanyaan user
@@ -97,12 +129,6 @@ prompt_summary_question = ChatPromptTemplate.from_messages([
     """),
     ("human",
     """
-    Respon Sebelumnya:
-    {last_response}
-
-    Data yang tersedia:
-    {data_json}    
-    
     Pertanyaan:
     {question}
     """)

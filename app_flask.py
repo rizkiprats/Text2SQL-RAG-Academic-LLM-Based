@@ -193,7 +193,7 @@ def chat():
         if not chat_message:
             return {'error': 'No message provided'}, 400
 
-        response_classify = text2sql.run_classify_question(chat_message)
+        response_classify = text2sql.run_classify_question(chat_message, text.retriever)
         print("response_classify : ", response_classify)
         
         query_type = json.loads(response_classify)["queryType"]

@@ -37,10 +37,19 @@ class TextRAG:
         self.retriever, self.docs = self._indexing_vectore()
 
     def load_all_documents(self, folder_path):
+        """""
+        Mengambil semua dokumen dari folder yang ditentukan, mendukung format PDF, DOCX, XLSX/XLS.
+         - PDF: Menggunakan PyPDF2 untuk ekstraksi teks.
+         - DOCX: Menggunakan python-docx untuk ekstraksi teks.
+         - XLSX/XLS: Menggunakan pandas untuk membaca dan mengonversi ke string.
+        """
+
         all_contents = []
-        for filename in os.listdir(folder_path):
-            path = os.path.join(folder_path, filename)
-            try:
+        try:
+            print(f"Start loading documents from folder: {folder_path}...")
+
+            for filename in os.listdir(folder_path):
+                path = os.path.join(folder_path, filename)
                 if filename.endswith(".pdf"):
                     from PyPDF2 import PdfReader
                     reader = PdfReader(path)
@@ -62,27 +71,54 @@ class TextRAG:
                     document = LangchainDocument(page_content=text, metadata={"document file": filename})
                     all_contents.append(document)
 
-            except Exception as e:
-                print(f"Gagal membaca file {filename}: {e}")
+            print (f"Finished loading documents from folder: {folder_path}.")
+            # print (f"Text content from documents: {[doc.page_content[:200] for doc in all_contents]}")
+
+        except Exception as e:
+            print(f"Error loading documents from folder {folder_path}: {e}")
         
         return all_contents
 
     def _indexing_vectore(self):
+        """
+        Melakukan indexing pada dokumen yang telah dimuat untuk digunakan dalam pencarian berbasis vektor.
+        """
+
         # Load documents and create vector store
         documents = self.load_all_documents("document_files")
 
         if documents:
+            print("Start indexing documents ...")
             doc_vectorstore = ChromaVectorStore.from_documents(
                 documents, collection_name="documents_docs", embedding=self.embeddings)
             doc_retriever = doc_vectorstore.as_retriever(
                 search_kwargs={"k": 1})
+            
+            print('Finished indexing documents.')
+            doc_indexes = "\n".join([doc.page_content for doc in documents])
+
+            # print("doc retriever :", doc_retriever)
+            # print("doc vectorstore :", doc_vectorstore)
+            # print("doc indexes :", doc_indexes)
 
             return doc_retriever, doc_vectorstore
         else:
+            print('No documents found for indexing')
             return None, None
 
     def run_related_context_check(self, question: str, last_response: str, last_data_json: str) -> bool:
+        print("Starting related context check pipeline ...")
         prompt = prompt_related_question_check
+
+        print("Last response for related question check:", last_response)
+        print("Last data JSON for related question check:", last_data_json)
+
+        if last_response == "" and last_data_json is None:
+            print("No previous context available, returning false for related context check.")
+            return False
+
+        def last_response_fn(_): return last_response
+        def last_data_json_fn(_): return last_data_json
 
         # fungsi untuk debug payload ke invoke_pipeline
         def debug_print(x):
@@ -94,7 +130,7 @@ class TextRAG:
         # Define RAG pipeline
         rag_chain = (
             RunnableMap(
-                {"last_response": last_response, "last_data_json": last_data_json, "question": RunnablePassthrough()})
+                {"last_response": last_response_fn, "last_data_json": last_data_json_fn, "question": RunnablePassthrough()})
             | prompt
             | RunnableLambda(debug_print)
             | self.model
@@ -102,6 +138,7 @@ class TextRAG:
 
         # Run pipeline
         try:
+            print("Invoking related context check pipeline...")
             response = rag_chain.invoke(question)
             print("response question related check: ", response)
         except Exception as e:
@@ -120,7 +157,14 @@ class TextRAG:
         return False
 
     def run_summary_context(self, question: str, last_response: str, data_json: str) -> str:
+        print("Starting summary context pipeline ...")
         prompt = prompt_summary_question
+
+        print("Last response for summary context:", last_response)
+        print("Data JSON for summary context:", data_json)
+        
+        def last_response_fn(_): return last_response
+        def data_json_fn(_): return data_json
 
         # fungsi untuk debug payload ke invoke_pipeline
         def debug_print(x):
@@ -132,7 +176,7 @@ class TextRAG:
         # Define RAG pipeline
         rag_chain = (
             RunnableMap(
-                {"last_response": last_response, "data_json": data_json, "question": RunnablePassthrough()})
+                {"last_response": last_response_fn, "data_json": data_json_fn, "question": RunnablePassthrough()})
             | prompt
             | RunnableLambda(debug_print)
             | self.model
@@ -140,6 +184,7 @@ class TextRAG:
 
         # Run pipeline
         try:
+            print("Invoking summary context pipeline...")
             response = rag_chain.invoke(question)
             print("response summary context : ", response)
         except Exception as e:
@@ -196,7 +241,7 @@ class Text2SQLRAG:
             """)
 
             tables = cur.fetchall()
-            print("database tables : ", tables)
+            # print("database tables : ", tables)
 
             for (table_name,) in tables:
                 # Ambil skema dari setiap tabel
@@ -214,7 +259,7 @@ class Text2SQLRAG:
             conn.close()
 
             print("Finished fetching schema from PostgreSQL Database.")
-            print("schema_texts", schema_texts)
+            # print("schema_texts", schema_texts)
 
         except Exception as e:
             print(f"Error fetching schema: {e}")
@@ -241,9 +286,9 @@ class Text2SQLRAG:
             print('Finished indexing schema from PostgreSQL Database.')
             schema_indexes = "\n".join([doc.page_content for doc in docs])
 
-            print("sql retriever :", retriever)
-            print("sql docs :", docs)
-            print("schema_indexes :", schema_indexes)
+            # print("sql retriever :", retriever)
+            # print("sql docs :", docs)
+            # print("schema_indexes :", schema_indexes)
 
             return retriever, docs
         else:
@@ -269,7 +314,7 @@ class Text2SQLRAG:
                     WHERE table_schema = 'public'
             """)
             tables = cur.fetchall()
-            print("database tables : ", tables)
+            # print("database tables : ", tables)
 
             for (table_name,) in tables:
                 # Ambil kolom dan tipe data dari setiap tabel
@@ -319,8 +364,8 @@ class Text2SQLRAG:
             conn.close()
 
             print("Finished fetching schema from PostgreSQL Database for analysis.")
-            print("schema_texts for analysis", schema_texts)
-            print("schema_metadata for analysis", schema_metadata)
+            # print("schema_texts for analysis", schema_texts)
+            # print("schema_metadata for analysis", schema_metadata)
 
         except Exception as e:
             print(f"Error fetching schema for analysis: {e}")
@@ -347,34 +392,35 @@ class Text2SQLRAG:
             print('Finished indexing schema from PostgreSQL Database for analysis.')
             schema_indexes = "\n".join([doc.page_content for doc in docs])
 
-            print("sql retriever for analysis :", retriever)
-            print("sql docs for analysis :", docs)
-            print("schema indexes for analysis:", schema_indexes)
+            # print("sql retriever for analysis :", retriever)
+            # print("sql docs for analysis :", docs)
+            # print("schema indexes for analysis:", schema_indexes)
             
             return retriever, docs
         else:
             print('No schema database found for analysis')
-            
             return None, None
         
     def run_sql_rag(self, question: str):
+        print("Starting SQL RAG pipeline...")
+        prompt = prompt_sql_generator
+        
         if self.retriever:
             docs = self.retriever.invoke(question)
             schema_retrieve = "\n".join([doc.page_content for doc in docs])
             context = schema_retrieve
         else:
             context = ""
-
-        def context_fn(_): return context
+        print("Context for SQL Generation:", context)
 
         current_date = datetime.datetime.now()
         current_date_str = current_date.strftime("%Y-%m-%d")
-        print("current_date_str : ", current_date_str)
-        def current_date(_): return current_date_str
+        print("Current date String:", current_date_str)
+        
+        def context_fn(_): return context
+        def current_date_fn(_): return current_date_str
 
         print("The model:", self.model)
-
-        prompt = prompt_sql_generator
 
         # fungsi untuk debug payload ke invoke_pipeline
         def debug_print(x):
@@ -386,7 +432,7 @@ class Text2SQLRAG:
         # Define RAG pipeline
         rag_chain = (
             RunnableMap(
-                {"context": context_fn, "date": current_date, "question": RunnablePassthrough()})
+                {"context": context_fn, "date": current_date_fn, "question": RunnablePassthrough()})
             | prompt
             | RunnableLambda(debug_print)
             | self.model
@@ -394,6 +440,7 @@ class Text2SQLRAG:
 
         # Run pipeline
         try:
+            print("Invoking SQL RAG pipeline...")
             response = rag_chain.invoke(question)
             print("response question rag: ", response)
         except Exception as e:
@@ -437,21 +484,34 @@ class Text2SQLRAG:
         
         return df, error
 
-    def run_classify_question(self, question: str):
-
+    def run_classify_question(self, question: str, document_files_retriever=None):
+        print("Starting question classification pipeline...")
+        prompt = prompt_classify_question
+        
         if self.retriever_analysis:
             docs = self.retriever_analysis.invoke(question)
             schema_retrieve = "\n".join([doc.page_content for doc in docs])
-            context = schema_retrieve
+            sql_context = schema_retrieve
         else:
-            context = ""
+            sql_context = ""
+        print("Context Database for classification:", sql_context)
 
-        print("Context for classification:", context)
-        def context_fn(_): return context
+        if document_files_retriever:
+            docs_files = document_files_retriever.invoke(question)
+            docs_files_retrieve = "\n".join([doc.page_content for doc in docs_files])
+            document_files_context = "\n\n" + docs_files_retrieve
+        else:
+            document_files_context = ""
+        print("Context Document Files for classification:", document_files_context)
 
-        prompt = prompt_classify_question
+        format_output = "{\"queryType\": \"GENERAL_QUESTION\" | \"DATA_QUESTION\" | \"DOCUMENT_QUESTION\"}"
+        print("Format output for classification:", format_output)
+        
+        def sql_context_fn(_): return sql_context
+        def document_files_context_fn(_): return document_files_context
+        def format_output_fn(_): return format_output
 
-        format_output = "{\"queryType\": \"GENERAL_QUESTION\" | \"DATA_QUESTION\" | \"OUT_OF_SCOPE\"}"
+        print("The model:", self.model)
 
         # fungsi untuk debug payload ke invoke_pipeline
         def debug_print(x):
@@ -463,13 +523,14 @@ class Text2SQLRAG:
         # Define RAG pipeline
         rag_chain = (
             RunnableMap(
-                {"context": context_fn, "format_output": format_output, "question": RunnablePassthrough()})
+                {"sql_context": sql_context_fn, "document_files_context": document_files_context_fn, "format_output": format_output_fn, "question": RunnablePassthrough()})
             | prompt
             | RunnableLambda(debug_print)
             | self.model
         )
 
         try:
+            print("Invoking question classification pipeline...")
             # Run pipeline
             response = rag_chain.invoke(question)
             print("response analysis classification question: ", response)
