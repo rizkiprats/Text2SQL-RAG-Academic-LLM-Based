@@ -25,14 +25,51 @@ from prompt import prompt_related_question_check, prompt_summary_question
 
 from utils import execute_query_and_return_df
 
+import requests
+from langchain_openai import ChatOpenAI
+
+class vLLMChat:
+    def __init__(self, endpoint_url: str):
+        self.active_model_name = self.get_active_model_name(endpoint_url)
+
+    def get_active_model_name(self, vllm_server_url: str) -> str:
+        try:
+            endpoint = f"{vllm_server_url}/v1/models"
+            response = requests.get(endpoint, timeout=5)
+            response.raise_for_status()
+            models_data = response.json()
+            
+            active_model = models_data["data"][0]["id"]
+            print(f"[vLLM-Docker] Connection secure. Active model detected: '{active_model}'")
+            return active_model
+        except Exception as e:
+            print(f"[Warning] Docker unreachable or initializing: {e}. Falling back to '/model'.")
+            return "/model"
+
 class TextRAG:
     def __init__(self):
         self.embeddings = HuggingFaceEmbeddings(
             model_name=MODELS["embedding_model"], encode_kwargs={"normalize_embeddings": True})
+        
+        use_vllm = MODELS["use_vllm"]
 
-        # Use Local Ollama
-        self.model = ChatOllama(
-            model=MODELS["general_llm_model"], base_url="http://localhost:11434", temperature=0.7, num_ctx=6114)
+        if use_vllm:
+            VLLM_SERVER = MODELS["vllm_server_url"]
+            
+            self.vllm_chat = vLLMChat(endpoint_url=VLLM_SERVER)
+            detected_model = self.vllm_chat.active_model_name
+
+            self.model = ChatOpenAI(
+                base_url=f"{VLLM_SERVER}/v1",
+                api_key="token-not-needed-for-vllm",  # Required by SDK, ignored by vLLM
+                model=detected_model,                 # Guaranteed to match the running container
+                temperature=0.7
+            )
+        else:
+            OLLAMA_SERVER = MODELS["ollama_server_url"]
+            
+            self.model = ChatOllama(
+                model=MODELS["general_llm_model"], base_url=OLLAMA_SERVER, temperature=0.7, num_ctx=6114)
 
         self.retriever, self.docs = self._indexing_vectore()
 
@@ -213,12 +250,35 @@ class Text2SQLRAG:
         self.retriever, self.docs = self._indexing_vectore()
         self.retriever_analysis, self.docs_analysis = self._indexing_vectore_analysis()
 
+        use_vllm = MODELS["use_vllm"]
+        
+        if use_vllm:
+            VLLM_SERVER = MODELS["vllm_server_url"]
+            
+            self.chatvllm = vLLMChat(endpoint_url=VLLM_SERVER)
+            detected_model = self.chatvllm.active_model_name
 
-        # Use Local Ollama
-        self.model = ChatOllama(
-            model=MODELS["sql_llm_model"], base_url="http://localhost:11434", temperature=0.1, num_ctx=6114)
-        self.model_answer = ChatOllama(
-            model=MODELS["general_llm_model"], base_url="http://localhost:11434", temperature=0.7, num_ctx=6114)
+            self.model = ChatOpenAI(
+                base_url=f"{VLLM_SERVER}/v1",
+                api_key="token-not-needed-for-vllm",  # Required by SDK, ignored by vLLM
+                model=detected_model,                 # Guaranteed to match the running container
+                temperature=0.1
+            )
+
+            self.model_answer = ChatOpenAI(
+                base_url=f"{VLLM_SERVER}/v1",
+                api_key="token-not-needed-for-vllm",  # Required by SDK, ignored by vLLM
+                model=detected_model,                 # Guaranteed to match the running container
+                temperature=0.7
+            )
+        else:
+            VLLM_SERVER = MODELS["vllm_server_url"]
+            
+            self.model = ChatOllama(
+                model=MODELS["sql_llm_model"], base_url=VLLM_SERVER, temperature=0.1, num_ctx=6114)
+            
+            self.model_answer = ChatOllama(
+                model=MODELS["general_llm_model"], base_url=VLLM_SERVER, temperature=0.7, num_ctx=6114)
 
         self.cache = SQLResponseCache()
 
