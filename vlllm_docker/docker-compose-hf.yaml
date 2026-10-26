@@ -1,0 +1,37 @@
+version: "3.9"
+
+services:
+  vllm:
+    image: vllm-server:latest
+    container_name: vllm-server
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      # - HUGGING_FACE_HUB_TOKEN=hf_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+      - HF_HOME=/root/.cache/huggingface
+    volumes:
+      - ./hf-cache:/root/.cache/huggingface
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    entrypoint: ["python3", "-m", "vllm.entrypoints.openai.api_server"]
+    command:
+      - --model
+      - hugging-quants/Meta-Llama-3.1-8B-Instruct-AWQ-INT4
+      - --quantization
+      - awq
+      - --enforce-eager
+      - --gpu-memory-utilization
+      - "1"
+      - --max-model-len
+      - "4096"
+      - --max-num-seqs
+      - "4"
+      - --trust-remote-code
+      - --port
+      - "8000"

@@ -1,0 +1,17 @@
+# 1. Clean up Docker environment completely
+docker stop $(docker ps -aq)
+docker rm $(docker ps -aq)
+docker rmi -f $(docker images -q)
+docker volume rm $(docker volume ls -q)
+docker network prune -f
+docker builder prune -af
+
+# 2. Build the Docker image for vllm (Fixed syntax)
+docker build --no-cache -t vllm-server:latest .
+
+# 3. Choose and run ONLY ONE of the compose configurations below:
+# Option A: If using HuggingFace sources
+docker compose -f docker-compose-hf.yml up --no-build -d
+
+# Option B: If using local sources / custom volume deployment
+docker compose -f docker-compose.yml up --no-build -d
