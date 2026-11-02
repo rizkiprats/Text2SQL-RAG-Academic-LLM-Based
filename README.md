@@ -25,6 +25,7 @@ Choose one of the following methods to configure your Large Language Model (LLM)
    Open your `.env` file and set the `USE_VLLM` parameter to `True`. The application will automatically synchronize the model based on your vLLM Docker configuration.
    ```env
    USE_VLLM=True
+   VLLM_SERVER_URL=http://localhost:8000
    ```
 
 ---
