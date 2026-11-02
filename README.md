@@ -6,7 +6,42 @@ A Flask-based chatbot application that combines Text-to-SQL generation, Retrieva
 - Document file search from `document_files/`
 - General web context via Google search
 
-The app uses a local Ollama LLM for SQL generation and summary responses, plus HuggingFace embeddings and Chroma vector indexing.
+The app can uses a local LLM Models from Ollama or vLLM service for SQL generation and summary responses, plus HuggingFace embeddings and Chroma vector indexing.
+
+## LLM Configuration Guide
+
+Choose one of the following methods to configure your Large Language Model (LLM) service:
+
+### Option 1: Using vLLM (Docker)
+
+1. **Configure Docker Services:** 
+   Set up the vLLM Docker services by modifying the configuration files inside the `vllm_docker/` folder.
+2. **Model Customization:** 
+   You can use models directly from the Hugging Face Hub or load local models. If you use downloaded models, store them in the following directory:
+   ```text
+   vllm_docker/LLM_Models/
+   ```
+3. **Enable vLLM:** 
+   Open your `.env` file and set the `USE_VLLM` parameter to `True`. The application will automatically synchronize the model based on your vLLM Docker configuration.
+   ```env
+   USE_VLLM=True
+   ```
+
+---
+
+### Option 2: Using Ollama (Local Service)
+
+1. **Prerequisites:** 
+   Make sure the Ollama service is installed and actively running on your operating system.
+2. **Environment Configuration:** 
+   Open your `.env` file, set `USE_VLLM` to `False`, and update the model parameter along with your Ollama service URL:
+   ```env
+   USE_VLLM=False
+   OLLAMA_SERVER_URL=http://localhost:11434
+   SQL_LLM_MODEL=llama3.2:3b-instruct-q5_0
+   GENERAL_LLM_MODEL=llama3.2:3b-instruct-q5_0
+   ```
+
 
 ## Features
 
@@ -53,15 +88,23 @@ The app loads settings from `.env` and expects the following keys:
 - `FLASK_RUN_HOST`
 - `FLASK_RUN_PORT`
 - `FLASK_DEBUG`
+
 - `POSTGRES_DB`
 - `POSTGRES_USER`
 - `POSTGRES_PASSWORD`
 - `POSTGRES_HOST`
 - `POSTGRES_PORT`
-- `SQL_LLM_MODEL`
-- `GENERAL_LLM_MODEL`
+
 - `EMBEDDING_MODEL`
 - `EMBEDDING_MODEL_SQL`
+
+- `OLLAMA_SERVER_URL`
+- `SQL_LLM_MODEL`
+- `GENERAL_LLM_MODEL`
+
+- `USE_VLLM`
+- `VLLM_SERVER_URL`
+
 - `JWT_SECRET_KEY`
 
 Example `.env` values are already defined in the repository.
